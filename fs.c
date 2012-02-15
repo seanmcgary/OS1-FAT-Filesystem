@@ -27,6 +27,8 @@ int create_fs(char *fs_name){
 
 	boot_record.cluster_size = 8;
 	boot_record.size = 10;
+	boot_record.fat = 0;
+	boot_record.root_dir = 0;
 
 
 	while(make_filesystem == 1 && i < 3){
@@ -73,7 +75,7 @@ int create_fs(char *fs_name){
 		}
 	}
 
-	printf("Creating FS with:Name: %s\nSize: %d\nClusters: %d\n", 
+	printf("Creating FS with:\n\tName: %s\n\tSize: %d\n\tClusters: %d\n------\n", 
 			fs_name, boot_record.size, boot_record.cluster_size);
 	
 	
@@ -84,17 +86,15 @@ int create_fs(char *fs_name){
 		fprintf(stderr, "Seek erorr: %s\n", strerror(errno));
 	}
 	
-	char test[] = "Hello world";
-
-	fwrite(&test, 1, sizeof(test), fs);
+	
+	fwrite(&boot_record, 1, sizeof(struct br), fs);
 	
 	seek_to_beginning(fs);
 
-	char other_test[strlen(test) + 1];
+	struct br copy_br;
 
-	fread(&other_test, 1, sizeof(test), fs);
+	fread(&copy_br, 1, sizeof(struct br), fs);
 
-	printf("Read: %s\n", other_test);
 }
 
 void seek_to_beginning(FILE *file){
