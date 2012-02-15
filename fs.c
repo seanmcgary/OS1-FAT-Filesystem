@@ -73,23 +73,54 @@ int create_fs(char *fs_name){
 		}
 	}
 
-	printf("Creating FS with:Name: %s\nSize: %d\nClusters: %d\n", fs_name, boot_record.size, boot_record.cluster_size);
+	printf("Creating FS with:Name: %s\nSize: %d\nClusters: %d\n", 
+			fs_name, boot_record.size, boot_record.cluster_size);
 	
-	int fd;
+	
+	FILE *fs = create_empty_file(fs_name, boot_record.size * MEGABYTE);
 
-	if((fd = open(fs_name, O_RDWR | O_CREAT, 0777)) == -1){
-		perror("Cannot open output file\n");
-		exit(1);
+	// move the cursor to the start of the file
+	if(fseek(fs, 0, SEEK_SET) < 0){
+		fprintf(stderr, "Seek erorr: %s\n", strerror(errno));
+	}
+	
+	char test[] = "Hello world";
+
+	fwrite(&test, 1, sizeof(test), fs);
+	
+	seek_to_beginning(fs);
+
+	char other_test[strlen(test) + 1];
+
+	fread(&other_test, 1, sizeof(test), fs);
+
+	printf("Read: %s\n", other_test);
+}
+
+void seek_to_beginning(FILE *file){
+	if(fseek(file, 0, SEEK_SET) < 0){
+		fprintf(stderr, "Seek erorr: %s\n", strerror(errno));
+	}
+}
+
+FILE *create_empty_file(char *file_name, int size){
+	FILE *new_file;
+
+	new_file = fopen(file_name, "wb+");
+	
+	if(new_file == NULL){
+		fprintf(stderr, "Could not create file %s\n", file_name);
 	}
 
-	printf("FD: %d\n", fd);
-	// set to the beginning
-	if(lseek(fd, 0, SEEK_SET) < 0){
-		perror("Error in lseek\n");
+	// set the filesize by seeking to size - 1 and writing a 0 to the place
+	if(fseek(new_file, size - 1, SEEK_SET) < 0){
+		fprintf(stderr, "Seek erorr: %s\n", strerror(errno));
 	}
 
-	printf("Cluster size: %d\n", sizeof(boot_record.cluster_size));
-	
+	fwrite("", 1, sizeof(""), new_file);
+
+	return new_file;
+
 }
 
 int open_fs(char *fs_name){
