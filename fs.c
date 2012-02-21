@@ -125,15 +125,15 @@ int create_fs(char *fs_name){
 	
 	
 	// write the FAT to the filesystem
-	seek_to_cluster(fs, 1, boot_record.cluster_size);
+	seek_to_cluster(fs, boot_record.fat, boot_record.cluster_size);
 	fwrite(&fat, 1, sizeof(fat), fs);
 	
 	// write the root directory
-	seek_to_cluster(fs, 2, boot_record.cluster_size);
+	seek_to_cluster(fs, boot_record.root_dir, boot_record.cluster_size);
 	fwrite(&root_dir, 1, boot_record.cluster_size, fs); 
 
-
-	seek_to_cluster(fs, 2, boot_record.cluster_size);
+	// read it back out to test
+	/*seek_to_cluster(fs, 2, boot_record.cluster_size);
 
 	struct directory_entry tmp_root[boot_record.cluster_size / sizeof(struct directory_entry)];
 	printf("tmp_root size: %d\n", sizeof(tmp_root));
@@ -141,6 +141,17 @@ int create_fs(char *fs_name){
 	//tmp_root = (struct directory_entry *) malloc(boot_record.cluster_size / sizeof(struct directory_entry));
 
 	fread(&tmp_root, sizeof(tmp_root), 1, fs);
+
+	// read back fat to test
+	seek_to_cluster(fs, boot_record.fat, boot_record.cluster_size);
+	int new_fat[calc_num_clusters(boot_record.size, boot_record.cluster_size)];
+	printf("Size of new_fat: %d\n", sizeof(new_fat));
+	fread(&new_fat, sizeof(new_fat), 1, fs);
+
+	for(int i = 0; i < calc_num_clusters(boot_record.size, boot_record.cluster_size); i++){
+		printf("Fat[%d]: %x\n", i, new_fat[i]);
+	}
+	*/
 	
 }
 
