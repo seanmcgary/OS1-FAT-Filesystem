@@ -262,17 +262,17 @@ void get_file(struct fs *file_system, char *file_name){
 		//printf("dir[%d]: %x\n", i, root_dir[i].name[0]);
 		// if the first byte of the filename isnt 0x00, then check its name
 		if(root_dir[i].name[0] != 0x00){
-			printf("comparing file names");
+			printf("comparing file names\n");
 			// compare file names
 			if(strcmp(root_dir[i].name, file_name) == 0){
 				// make sure its not a directory
 				if(root_dir[i].type == 0x0000){
 					char *file_buff;
 					// create a buffer the size of the file
-					file_buff = (char *) malloc(sizeof(char) * root_dir[i].size);
+					file_buff = (char *) malloc(sizeof(char) * root_dir[i].size + 1);
 
 					// get the file from the file system
-					read_fs_for_file(file_system, file_buff);
+					read_fs_for_file(file_system, file_buff, root_dir[i]);
 
 				}
 			}
@@ -282,10 +282,47 @@ void get_file(struct fs *file_system, char *file_name){
 	}
 }
 
-void read_fs_for_file(struct fs *file_system, char *file_buff){
-	int *fat;
+void read_fs_for_file(struct fs *file_system, char *file_buff, struct directory_entry file){
 	printf("read_fs_for_file\n");
-	fat = get_fat(file_system);
+	
+	struct fat_wrap *fatty;
+	fatty = (struct fat_wrap*) malloc(sizeof(struct fat_wrap));
+
+	fatty = get_fat(file_system);
+
+	int current_index = file.index;
+	int size_remaining = file.size;
+
+	while(size_remaining > 0){
+		seek_to_cluster(file_system->fs, current_index, file_system->boot_record.cluster_size);
+
+		char *tmp_buff;
+		
+		int bytes_to_read = -1;
+
+		if(size_remaining > file_system->boot_record.cluster_size){
+			tmp_buff = (char *) malloc(file_system->boot_record.cluster_size);
+			bytes_to_read = file_system->boot_record.cluster_size;
+			size_remaining -= file_system->boot_record.cluster_size;
+		} else {
+			tmp_buff = (char *) malloc(size_remaining);
+			bytes_to_read = size_remaining;
+			size_remaining = 0;
+		}
+
+		fread(tmp_buff, 1, bytes_to_read, file_system->fs);
+
+		strcat(file_buff, tmp_buff);
+
+		if(size_remaining > 0){
+			current_index = fatty->fat[current_index];
+		}
+
+		printf("Read %dbytes:\n", bytes_to_read);
+	}
+
+	printf("FILE:\n-------------------\n%s\n\n", file_buff);
+
 }
 
 struct fat_wrap *get_fat(struct fs *file_system){

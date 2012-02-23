@@ -35,8 +35,9 @@ int main(int argc, char *argv[]){
 	create_file(file_system, new_file, large_file, sizeof(char) * strlen(large_file), 0x0000);
 	
 	//_print_fat(file_system);
-	_print_dir(file_system);
-	//get_file(file_system, "my_file.txt");
+	//_print_dir(file_system);
+	
+	get_file(file_system, "My_File");
 
 	return 0;
 }

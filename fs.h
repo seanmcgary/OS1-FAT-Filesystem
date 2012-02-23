@@ -70,7 +70,7 @@ struct fs *open_fs(char *fs_name);
 void get_file(struct fs *file_system, char *file_name);
 
 // traverses filesystem, piecing together a file from clusters
-void read_fs_for_file(struct fs *file_system, char *file_buff);
+void read_fs_for_file(struct fs *file_system, char *file_buff, struct directory_entry file);
 
 // get the FAT from disk
 struct fat_wrap *get_fat(struct fs *file_system);
@@ -89,6 +89,9 @@ int get_next_available_cluster(struct fat_wrap *fatty);
 
 // reads the directory table from disk into memory
 struct directory_entry *get_directory_table(struct fs *file_system);
+
+// find the next available file in the directory table and add it
+void add_file_to_dir(struct fs *file_system, struct directory_entry new_file);
 
 // debug utility to print the FAT as it is on the disk
 void _print_fat(struct fs *file_system);
