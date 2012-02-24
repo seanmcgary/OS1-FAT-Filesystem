@@ -36,8 +36,15 @@ int main(int argc, char *argv[]){
 	
 	//_print_fat(file_system);
 	//_print_dir(file_system);
+	char *noob;
+
+	noob = get_file(file_system, "My_File");
 	
-	get_file(file_system, "My_File");
+	if(noob == NULL){
+		printf("file doesnt exist\n");
+	} else {
+		printf("%s", noob);
+	}
 
 	return 0;
 }

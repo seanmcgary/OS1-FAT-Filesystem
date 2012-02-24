@@ -235,7 +235,7 @@ int available_clusters(struct fs *file_system){
 	return free_clusters;
 }
 
-struct directory_entry *get_directory_table(struct fs *file_system){
+struct dir_wrap *get_directory_table(struct fs *file_system){
 	seek_to_cluster(file_system->fs,
 					file_system->boot_record.root_dir,
 					file_system->boot_record.cluster_size);
@@ -247,44 +247,55 @@ struct directory_entry *get_directory_table(struct fs *file_system){
 	root_dir = (struct directory_entry *) malloc(sizeof(struct directory_entry) * num_files);
 
 	fread(root_dir, 1, sizeof(struct directory_entry) * num_files, file_system->fs);
+
+	struct dir_wrap *dir;
+	dir = (struct dir_wrap*) malloc(sizeof(struct dir_wrap));
+
+	dir->dir = root_dir;
+	dir->num_files = num_files;
 	
-	return root_dir;
+	return dir;
 }
 
-void get_file(struct fs *file_system, char *file_name){
+char *get_file(struct fs *file_system, char *file_name){
 	
-	struct directory_entry *root_dir;
+	struct dir_wrap *root_dir;
 	root_dir = get_directory_table(file_system);
 	
-	int num_files = file_system->boot_record.cluster_size / sizeof(struct directory_entry);
+	char *fbuff;
+	fbuff = NULL;
 
-	for(int i = 0; i < num_files; i++){
-		//printf("dir[%d]: %x\n", i, root_dir[i].name[0]);
+	printf("looking for %s\n", file_name);
+	for(int i = 0; i < root_dir->num_files; i++){
 		// if the first byte of the filename isnt 0x00, then check its name
-		if(root_dir[i].name[0] != 0x00){
+		if(root_dir->dir[i].name[0] != 0x00){
 			printf("comparing file names\n");
 			// compare file names
-			if(strcmp(root_dir[i].name, file_name) == 0){
+			printf("Current file: %s\n", root_dir->dir[i].name); 
+			int cmp = strcmp(file_name, root_dir->dir[i].name);
+			printf("strcmp: %d\n", cmp);
+			
+			if(cmp == 0){
+				printf("Compare valid\n");
 				// make sure its not a directory
-				if(root_dir[i].type == 0x0000){
-					char *file_buff;
+				
+				if(root_dir->dir[i].type == 0x0000){
 					// create a buffer the size of the file
-					file_buff = (char *) malloc(sizeof(char) * root_dir[i].size + 1);
-
+					printf("File found: %s\n", file_name);
 					// get the file from the file system
-					read_fs_for_file(file_system, file_buff, root_dir[i]);
+					fbuff = read_fs_for_file(file_system, root_dir->dir[i]);
 
 				}
+			} else {
+				printf("no match\n");
 			}
 		}
-
-		//printf("file[%d]: %x\n", i, root_dir[i].name[0]);
 	}
+
+	return fbuff;
 }
 
-void read_fs_for_file(struct fs *file_system, char *file_buff, struct directory_entry file){
-	printf("read_fs_for_file\n");
-	
+char *read_fs_for_file(struct fs *file_system, struct directory_entry file){
 	struct fat_wrap *fatty;
 	fatty = (struct fat_wrap*) malloc(sizeof(struct fat_wrap));
 
@@ -293,6 +304,11 @@ void read_fs_for_file(struct fs *file_system, char *file_buff, struct directory_
 	int current_index = file.index;
 	int size_remaining = file.size;
 
+	char *file_buff;
+
+	file_buff = (char *) malloc(sizeof(char) * file.size + 1);
+	
+	// loop to piece together the blocks of the file from the file system
 	while(size_remaining > 0){
 		seek_to_cluster(file_system->fs, current_index, file_system->boot_record.cluster_size);
 
@@ -317,12 +333,9 @@ void read_fs_for_file(struct fs *file_system, char *file_buff, struct directory_
 		if(size_remaining > 0){
 			current_index = fatty->fat[current_index];
 		}
-
-		printf("Read %dbytes:\n", bytes_to_read);
 	}
 
-	printf("FILE:\n-------------------\n%s\n\n", file_buff);
-
+	return file_buff;
 }
 
 struct fat_wrap *get_fat(struct fs *file_system){
@@ -338,12 +351,7 @@ struct fat_wrap *get_fat(struct fs *file_system){
 
 	fread(fat, 1, sizeof(int) * num_clusters, file_system->fs);
 
-	//for(int i = 0; i < num_clusters; i++){
-	//	printf("Fat[%d]: %x\n", i, fat[i]);
-	//}
-
 	struct fat_wrap *fatty;
-
 	fatty = (struct fat_wrap*) malloc(sizeof(struct fat_wrap));
 
 	fatty->fat = fat;
@@ -394,25 +402,21 @@ void write_to_cluster(struct fs *file_system, unsigned int cluster_num, char *cl
 }
 
 void add_file_to_dir(struct fs *file_system, struct directory_entry new_file){
-	struct directory_entry *root_dir;
+	struct dir_wrap *root_dir;
 	root_dir = get_directory_table(file_system);
-	int num_files = file_system->boot_record.cluster_size / sizeof(struct directory_entry);
 
-	for(int i = 0; i < num_files; i++){
-		if(root_dir[i].name[0] == 0x00){
-			root_dir[i] = new_file;
+	for(int i = 0; i < root_dir->num_files; i++){
+		if(root_dir->dir[i].name[0] == 0x00){
+			root_dir->dir[i] = new_file;
 			break;
 		} 
 	}
 
-	save_directory_tree(file_system, root_dir);
+	save_directory_tree(file_system, root_dir->dir);
 	
 }
 
 void insert_file(struct fs *file_system, struct directory_entry new_file, char *file_content){
-	struct directory_entry *root_dir;
-	root_dir = get_directory_table(file_system);
-
 	struct fat_wrap *fatty;
 	fatty = (struct fat_wrap*) malloc(sizeof(struct fat_wrap));
 
@@ -491,16 +495,14 @@ void _print_fat(struct fs *file_system){
 }
 
 void _print_dir(struct fs *file_system){
-	struct directory_entry *root_dir;
+	struct dir_wrap *root_dir;
 	root_dir = get_directory_table(file_system);
 
-	int num_files = file_system->boot_record.cluster_size / sizeof(struct directory_entry);
-	
-	for(int i = 0; i < num_files; i++){
-		if(root_dir[i].name[0] == 0x00){
-			printf("File[%d]: %x\n", i, root_dir[i].name[0]);
+	for(int i = 0; i < root_dir->num_files; i++){
+		if(root_dir->dir[i].name[0] == 0x00){
+			printf("File[%d]: %x\n", i, root_dir->dir[i].name[0]);
 		} else {
-			printf("File[%d]: %s\n", i, root_dir[i].name);
+			printf("File[%d]: %s\n", i, root_dir->dir[i].name);
 		}
 	}
 
