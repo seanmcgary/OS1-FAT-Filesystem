@@ -268,7 +268,7 @@ char *get_file(struct fs *file_system, char *file_name){
 	printf("looking for %s\n", file_name);
 	for(int i = 0; i < root_dir->num_files; i++){
 		// if the first byte of the filename isnt 0x00, then check its name
-		if(root_dir->dir[i].name[0] != 0x00){
+		if(root_dir->dir[i].name[0] != 0x00 && root_dir->dir[i].name[0] != 0xFF){
 			printf("comparing file names\n");
 			// compare file names
 			printf("Current file: %s\n", root_dir->dir[i].name); 
@@ -506,6 +506,21 @@ void _print_dir(struct fs *file_system){
 		}
 	}
 
+}
+
+void update_timestamp(struct fs *file_system, char *file_name){
+	struct dir_wrap *dir = get_directory_table(file_system);
+
+	for(int i = 0; i < dir->num_files; i++){
+		if(dir->dir[i].name[0] != 0x00 && dir->dir[i].name[0] != 0xFF){
+			int cmp = strcmp(file_name, dir->dir[i].name);
+			
+			if(cmp == 0){
+				dir->dir[i].creation = time();
+				save_directory_tree(file_system, dir);
+			}
+		}
+	}
 }
 
 void close_fs(struct fs *file_system){

@@ -99,6 +99,8 @@ struct dir_wrap *get_directory_table(struct fs *file_system);
 // find the next available file in the directory table and add it
 void add_file_to_dir(struct fs *file_system, struct directory_entry new_file);
 
+void update_timestamp(struct fs *file_system, char *file_name);
+
 // debug utility to print the FAT as it is on the disk
 void _print_fat(struct fs *file_system);
 

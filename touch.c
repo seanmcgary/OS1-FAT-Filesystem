@@ -27,6 +27,7 @@ int main(int argc, char *argv[]){
 		create_file(file_system, argv[1], "", 0, 0x0000);
 	} else {
 		// update the timestamp on the file
+		update_timestamp(file_system, argv[1]);
 	}
 
 	close_fs(file_system);
